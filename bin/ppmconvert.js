@@ -13,7 +13,7 @@ program
 
 program.parse(process.argv);
 if(!program.inFile || !program.outFile) {
-    console .log("use 'convert -i infile -o outfile -l locale'");
+    console .log("use 'ppmconvert -i infile -o outfile (-l locale)'");
     process.exit();
 }
 
@@ -27,7 +27,7 @@ mjAPI.start();
 
 var textIn;
 var textOut = "";
-const imageDir = `${process.cwd()}/images`;
+const imageDir = "images";
 if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir);
 }
@@ -55,7 +55,7 @@ const processText = async () => {
 
             // make a file name from the equation
             const hash = crypto.createHmac("md5", mathTxt).digest("hex");
-            var fileName = imageDir + "/" + hash + ".svg";
+            var fileName = `${imageDir}/${hash}.svg`;
             fs.writeFileSync(fileName, data.svg);
             let source = `src="${fileName}"`;
             let speech = speechEngine.toSpeech(data.mml);
@@ -104,7 +104,6 @@ const processText = async () => {
             } else if (((openTag === '(') && (tag === ')')) || ((openTag === '[') && (tag === ']'))) {
                 // correctly matched
                 await writeMath(txtBlock.slice(2, -2), openTag);
-                openTag = false;
             } else {
                 reportError(`mismatched closing tag \\${tag}`);
                 toBuffer(txtBlock);
