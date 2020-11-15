@@ -1,6 +1,6 @@
 {
     "name": "ppmath",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "create and link images from markup",
     "main": "bin/ppmconvert.js",
     "dependencies": {
