@@ -1,0 +1,18 @@
+{
+  "name": "m2svg",
+  "version": "1.0.1",
+  "description": "make svg images for LaTex expressions",
+  "main": "bin/index.js",
+  "bin": {
+    "m2svg": "./bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "rp31",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "mathjax": "^3.2.2"
+  }
+}
