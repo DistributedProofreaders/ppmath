@@ -12,9 +12,9 @@ For Mac, ?
 
 Then open a command prompt console and type:
 
-`npm install -g ppmath`
+`npm install mathjax`
 
-There may be few warning messages; these can safely be ignored. The tool can then be used from any directory.
+copy the file
 
 ## Use
 The tool is run from a command prompt console. Make a directory where you want to work and place the file you want to convert in it.
