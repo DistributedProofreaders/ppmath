@@ -4,6 +4,9 @@ const fs = require("fs"); // file system
 const mj = require("mathjax");
 const crypto = require("crypto");
 
+const packageJson = require('../package.json');
+console.log("m2svg version ", packageJson.version);
+
 const myArgs = process.argv.slice(2);
 if(myArgs.length !== 2) {
     console .log("use 'm2svg infile outfile'");
@@ -36,6 +39,8 @@ function gFix(txt) {
     // remove role and focusable which also fail to validate in ebookmaker
     txt = txt.replace(/role=".*?"/, "");
     txt = txt.replace(/focusable=".*?"/, "");
+    // add version
+    txt = txt.replace(/^<svg/, `<svg version="1.1"`);
     return txt;
 }
 
@@ -91,9 +96,6 @@ function writeMath(MathJax, mathTxt, inLine) {
 }
 
 function convert(MathJax) {
-    const packageJson = require('../package.json');
-    console.log("m2svg version ", packageJson.version);
-
     let textIn = fs.readFileSync(inFile, "utf8");
 
     let startIndex = 0;
