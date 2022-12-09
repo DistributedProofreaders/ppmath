@@ -31,6 +31,9 @@ function reportError(msg) {
     console.log(msg);
 }
 
+let fileSerial = 0;
+const fileNumbers = new Map();
+
 function gFix(txt) {
     // remove attributes from g tags that cause validation problems
     txt = txt.replace(/data-mml-node=".*?"/g, "");
@@ -45,12 +48,22 @@ function gFix(txt) {
 }
 
 function writeMath(MathJax, mathTxt, inLine) {
-    const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
+    const svg = MathJax.tex2svg(mathTxt.slice(2, -2), {display: !inLine});
     let svgCode = MathJax.startup.adaptor.innerHTML(svg);
 
-    // make a file name from the original equation
+    // make serial file nunmbers and put them in a map with keys so we can
+    // re-use them for the same math.
+    // make a key from the original equation including end tags in case same
+    // math is both display and inline.
     const hash = crypto.createHmac("md5", mathTxt).digest("hex");
-    var fileName = `${imageDir}/${hash}.svg`;
+    let fileNumber = fileNumbers.get(hash);
+    if(fileNumber  === undefined) {
+        fileSerial += 1;
+        fileNumber = fileSerial;
+        // add it to the map
+        fileNumbers.set(hash, fileNumber);
+    }
+    const fileName = `${imageDir}/${fileNumber}.svg`;
 
     // write html to display the image
     let source = `src="${fileName}"`;
@@ -86,10 +99,12 @@ function writeMath(MathJax, mathTxt, inLine) {
     fs.writeFileSync(fileName, svgCode);
 
     let alt = `alt=" "`;
+    const dataTex = `data-tex="${mathTxt}"`;
+    const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
     if(inLine) {
-        toBuffer(`<img ${style} ${source}  ${alt} data-tex="(${mathTxt})">`);
+        toBuffer(imgTag);
     } else { // display
-        toBuffer(`<span class="align-center"><img ${style} ${source} ${alt} data-tex="[${mathTxt}]"></span>`);
+        toBuffer(`<span class="align-center">${imgTag}</span>`);
     }
     // indicate progress
     process.stdout.write(".");
@@ -136,7 +151,7 @@ function convert(MathJax) {
             } else if (((openTag === '(') && (tag === ')')) || ((openTag === '[') && (tag === ']'))) {
                 // correctly matched
                 let inLine = (openTag === '(');
-                writeMath(MathJax, txtBlock.slice(2, -2), inLine);
+                writeMath(MathJax, txtBlock, inLine);
             } else {
                 reportError(`mismatched tags \\${tag} from line ${openLine} to line ${lineNum}`);
                 toBuffer(txtBlock);
