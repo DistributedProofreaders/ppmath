@@ -11,7 +11,7 @@ For Windows, download and run the installer from https://nodejs.org.
 For Mac, ?
 
 It is then necessary to open a command prompt:--
-In windows, in the list of programs that appear when you click on the windows icon, there will be a Node.js folder and within it the Node.js command prompt; this is the one to use.
+In windows 10 click on the windows icon and a list of programs will appear. In windows 11, click on the windows icon and in the box which then appears click "All Apps" to see the list. In the list there will be a Node.js folder and within it the Node.js command prompt; this is the one to use.
 In Linux the normal terminal will work.
 
 In the command window type:
@@ -34,6 +34,9 @@ In the converted file the maths expressions, delimited by the tags `\[` and `\]`
 The 'data-tex' attribute will contain the original maths expression.
 
 If the program detects any tags that do not match up correctly it will print a message at the terminal showing the number of the line where the error occurred and continue working.
+
+### Updating
+On subequent occasions, to ensure you have the latest version of m2svg type `npm update -g m2svg`
 
 ## Notes
 ### Images
