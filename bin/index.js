@@ -57,7 +57,7 @@ function writeMath(MathJax, mathTxt, inLine) {
     // math is both display and inline.
     const hash = crypto.createHmac("md5", mathTxt).digest("hex");
     let fileNumber = fileNumbers.get(hash);
-    if(fileNumber  === undefined) {
+    if(fileNumber === undefined) {
         fileSerial += 1;
         fileNumber = fileSerial;
         // add it to the map
@@ -84,7 +84,7 @@ function writeMath(MathJax, mathTxt, inLine) {
     result = re.exec(svgCode);
     let height = result ? result[1] : "0px";
 
-    let style=`style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
+    let style = `style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
 
     re = /viewBox=".+? .+? (.+?) (.+?)"/;
     result = re.exec(svgCode);
@@ -121,6 +121,7 @@ function convert(MathJax) {
     // track line numbers for reporting errors
     let lineNum = 1;
     let openTag = false;
+    let openLine = 0;
     while((result = mathRegex.exec(textIn)) !== null) {
         if(result[1]) { // newline
             lineNum += 1;
@@ -169,7 +170,7 @@ function convert(MathJax) {
     toBuffer(textIn.slice(startIndex));
     fs.writeFileSync(outFile, textOut);
     console.log("Finished");
-};
+}
 
 mj.init({
     loader: {load: ['input/tex', 'output/svg']}
