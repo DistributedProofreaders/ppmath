@@ -135,7 +135,7 @@ function convert(MathJax) {
             txtBlock = textIn.slice(startIndex, endIndex);
 
             if(openTag) {
-                reportError(`tag at line ${openLine} not closed, \\${openTag} found at line ${lineNum}`);
+                reportError(`tag at line ${openLine} not closed, \\${tag} found at line ${lineNum}`);
             }
             // remember line for this tag in case error occurs
             openLine = lineNum;
