@@ -51,6 +51,13 @@ function writeMath(MathJax, mathTxt, inLine) {
     const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
     let svgCode = MathJax.startup.adaptor.innerHTML(svg);
 
+    // if svgCode contains error text return it.
+    const reErr = /data-mjx-error="(.*?)"/;
+    let result = reErr.exec(svgCode);
+    if(result) {
+        return result[1];
+    }
+
     // make serial file nunmbers and put them in a map with keys so we can
     // re-use them for the same math.
     // make a key from the original equation including end tags in case same
@@ -71,7 +78,7 @@ function writeMath(MathJax, mathTxt, inLine) {
     // build style for html from svg
     // need vertical-align for html
     let re = /style="vertical-align: (.+?);"/;
-    let result = re.exec(svgCode);
+    result = re.exec(svgCode);
     let vAlign = result ? result[1] : "0px";
 
     // for epub to work in ADE etc. we need width and height from svg also in
@@ -108,6 +115,7 @@ function writeMath(MathJax, mathTxt, inLine) {
     }
     // indicate progress
     process.stdout.write(".");
+    return false;
 }
 
 function convert(MathJax) {
@@ -148,8 +156,11 @@ function convert(MathJax) {
             if (((openTag === '(') && (tag === ')')) || ((openTag === '[') && (tag === ']'))) {
                 tagStack.pop();
                 let inLine = (openTag === '(');
-                writeMath(MathJax, textIn.slice(startIndex, tagIndex), inLine);
+                let errorText = writeMath(MathJax, textIn.slice(startIndex, tagIndex), inLine);
                 startIndex = tagIndex + 2;
+                if(errorText) {
+                    reportError(`\nMathJax error near line ${lineNum}: ${errorText}`);
+                }
             }
         }
     }
