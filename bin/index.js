@@ -28,7 +28,7 @@ function toBuffer(txt) {
 }
 
 function reportError(msg) {
-    console.log(msg);
+    console.log('\n' + msg);
 }
 
 let fileSerial = 0;
@@ -121,53 +121,91 @@ function writeMath(MathJax, mathTxt, inLine) {
 function convert(MathJax) {
     let textIn = fs.readFileSync(inFile, "utf8");
 
-    let tagStack = [];  // holds start tag [ or (
-    let stackTop;
     let startIndex = 0;
     // look for opening or closing tags or newlines
     let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
+    let openTag = false;
+    let tagIndex = 0;
     let result;
+    let tag;
     // track line numbers for reporting errors
     let lineNum = 1;
+    let openLine = 1;
+
+    function repMismatch() {
+        reportError(`\\${openTag} at line ${openLine} followed by \\${tag} at line ${lineNum}`);
+    }
+
+    function resynch() {
+        openTag = tag;
+        openLine = lineNum;
+        startIndex = tagIndex + 2;
+    }
+
+    function writeOut() {
+        let inLine = (openTag === '(');
+        let errorText = writeMath(MathJax, textIn.slice(startIndex, tagIndex), inLine);
+        startIndex = tagIndex + 2;
+        if(errorText) {
+            reportError(`MathJax error near line ${lineNum}: ${errorText}`);
+        }
+        openTag = false;
+    }
+
     while((result = mathRegex.exec(textIn)) !== null) {
         if(result[1]) { // newline
             lineNum += 1;
             continue;
         }
-        let tag = result[0].charAt(1);
-        let tagIndex = result.index;
-        if (tagStack.length === 0) {
-            // no tags on stack
+        tag = result[0].charAt(1);
+        tagIndex = result.index;
+        if(!openTag) {
             if ((tag === '(') || (tag === '[')) {
-                // exclude tag from text block
+                // copy preceding text
                 toBuffer(textIn.slice(startIndex, tagIndex));
-                // remember line for this tag in case error occurs later
-                tagStack.push({tag: tag, openLine: lineNum});
+                resynch();
             } else {
                 // closing tag
                 reportError(`no start tag for \\${tag} at line ${lineNum}`);
             }
-            startIndex = tagIndex + 2;
         } else {
-            // tags on stack
-            stackTop = tagStack[tagStack.length - 1];
-            // ignore non-matching tags
-            let openTag = stackTop.tag;
-            if (((openTag === '(') && (tag === ')')) || ((openTag === '[') && (tag === ']'))) {
-                tagStack.pop();
-                let inLine = (openTag === '(');
-                let errorText = writeMath(MathJax, textIn.slice(startIndex, tagIndex), inLine);
-                startIndex = tagIndex + 2;
-                if(errorText) {
-                    reportError(`\nMathJax error near line ${lineNum}: ${errorText}`);
+            // already in math
+            if(openTag === '[') {
+                switch(tag) {
+                case ']':
+                    writeOut();
+                    break;
+                case '[':
+                    repMismatch();
+                    resynch();
+                    break;
+                default:
+                    // ignore \( and \), if mismatched will get mathJax error
+                    break;
+                }
+            } else {
+                // openTag is (
+                switch(tag) {
+                case '[':
+                case '(':
+                    repMismatch();
+                    resynch();
+                    break;
+                case ']':
+                    repMismatch();
+                    // into text mode
+                    openTag = false;
+                    break;
+                default:
+                    // )
+                    writeOut();
+                    break;
                 }
             }
         }
     }
-    // if there are any tags on the stack mark them as errors
-    while (tagStack.length !== 0) {
-        stackTop = tagStack.pop();
-        reportError(`no end tag for \\${stackTop.tag} at line ${stackTop.openLine}`);
+    if(openTag) {
+        reportError(`no end tag for \\${openTag} at line ${openLine}`);
     }
     // copy remaining text
     toBuffer(textIn.slice(startIndex));
