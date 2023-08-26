@@ -144,10 +144,11 @@ function convert(MathJax) {
 
     function writeOut() {
         let inLine = (openTag === '(');
-        let errorText = writeMath(MathJax, textIn.slice(startIndex, tagIndex), inLine);
+        let mathText = textIn.slice(startIndex, tagIndex);
+        let errorText = writeMath(MathJax, mathText, inLine);
         startIndex = tagIndex + 2;
         if(errorText) {
-            reportError(`MathJax error near line ${lineNum}: ${errorText}`);
+            reportError(`MathJax error near line ${lineNum}: ${errorText} : ${mathText}`);
         }
         openTag = false;
     }
