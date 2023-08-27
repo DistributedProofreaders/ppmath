@@ -182,6 +182,7 @@ function checkParse(txt) {
         }
     }
     if(openTag) {
+        ok = false;
         reportError(`no end tag for \\${openTag} at line ${openLine}`);
     }
     return ok;
