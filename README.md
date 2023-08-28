@@ -42,7 +42,11 @@ On subequent occasions, to ensure you have the latest version of m2svg type `npm
 ### Images
 The tool makes SVG images using Mathjax. The names of the images will be a serial number. Any duplicated expressions will link to the same image.
 
-The display images are centre-aligned horizontally. This is done by css. The html (or associated css file) should include something like the following:
+The images for "display maths" are centre-aligned horizontally.
+
+For "inline maths" if a punctuation mark immediately follows the expression a line break will not occur before it. Similarly a no-break space (either `&nbsp;` or the unicode character) may be inserted before or after an inline expression to avoid a line break.
+
+For these features to work the html (or associated css file) should include something like the following:
 
 ```css
 <style>
@@ -51,12 +55,12 @@ The display images are centre-aligned horizontally. This is done by css. The htm
     text-align: center;
     margin-top: 0.3em;
 }
+.nowrap {
+    white-space: nowrap;
+}
 </style>
 ```
-The vertical space above and below the image can be adjusted by changing margin-top and margin-bottom.
-
-### Reversion
-An application is available to revert the file with image links back to its original form.
+The vertical space above and below a display image can be adjusted by changing margin-top and margin-bottom.
 
 ### Limitations
 Some markup will not produce a usable image including: \tag{}. For tagged expressions you can use \text markup suitably spaced.
