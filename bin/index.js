@@ -4,8 +4,8 @@ const fs = require("fs"); // file system
 const mj = require("mathjax");
 const crypto = require("crypto");
 
-const packageJson = require('../package.json');
-console.log("m2svg version ", packageJson.version);
+//const packageJson = require('../package.json');
+//console.log("m2svg version ", packageJson.version);
 
 const myArgs = process.argv.slice(2);
 if(myArgs.length !== 2) {
@@ -16,15 +16,9 @@ if(myArgs.length !== 2) {
 let inFile = myArgs[0];
 let outFile = myArgs[1];
 
-var textOut = "";
-
 const imageDir = "images";
 if (!fs.existsSync(imageDir)) {
     fs.mkdirSync(imageDir);
-}
-
-function toBuffer(txt) {
-    textOut += txt;
 }
 
 function reportError(msg) {
@@ -55,7 +49,9 @@ function writeMath(MathJax, mathTxt, inLine) {
     const reErr = /data-mjx-error="(.*?)"/;
     let result = reErr.exec(svgCode);
     if(result) {
-        return result[1];
+        let errorReport = `MathJax error: ${result[1]} : ${mathTxt}`;
+        reportError(errorReport);
+        return errorReport;
     }
 
     // make serial file nunmbers and put them in a map with keys so we can
@@ -106,64 +102,44 @@ function writeMath(MathJax, mathTxt, inLine) {
     fs.writeFileSync(fileName, svgCode);
 
     let alt = `alt=" "`;
-    const dataTex = `data-tex="${mathTxt}"`;
-    const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
-    if(inLine) {
-        toBuffer(imgTag);
-    } else { // display
-        toBuffer(`<span class="align-center">${imgTag}</span>`);
-    }
+    // if display mode mathTxt can include inline tags
+    // replace by $ to avoid processing them later
+    // use $$, $ has special meaning in replace()
+    let mathData = mathTxt.replace(/\\\(|\\\)/g, "$$");
+    const dataTex = `data-tex="${mathData}"`;
+
     // indicate progress
     process.stdout.write(".");
-    return false;
+    return `<img ${style} ${source} ${alt} ${dataTex}>`;
 }
 
-function convert(MathJax) {
-    let textIn = fs.readFileSync(inFile, "utf8");
-
-    let startIndex = 0;
-    // look for opening or closing tags or newlines
+function checkParse(txt) {
     let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
-    let openTag = false;
-    let tagIndex = 0;
     let result;
-    let tag;
-    // track line numbers for reporting errors
     let lineNum = 1;
+    let tag;
+    let openTag = false;
     let openLine = 1;
+    let ok = true;
 
     function repMismatch() {
+        ok = false;
         reportError(`\\${openTag} at line ${openLine} followed by \\${tag} at line ${lineNum}`);
     }
 
     function resynch() {
         openTag = tag;
         openLine = lineNum;
-        startIndex = tagIndex + 2;
     }
 
-    function writeOut() {
-        let inLine = (openTag === '(');
-        let mathText = textIn.slice(startIndex, tagIndex);
-        let errorText = writeMath(MathJax, mathText, inLine);
-        startIndex = tagIndex + 2;
-        if(errorText) {
-            reportError(`MathJax error near line ${lineNum}: ${errorText} : ${mathText}`);
-        }
-        openTag = false;
-    }
-
-    while((result = mathRegex.exec(textIn)) !== null) {
+    while((result = mathRegex.exec(txt)) !== null) {
         if(result[1]) { // newline
             lineNum += 1;
             continue;
         }
         tag = result[0].charAt(1);
-        tagIndex = result.index;
         if(!openTag) {
             if ((tag === '(') || (tag === '[')) {
-                // copy preceding text
-                toBuffer(textIn.slice(startIndex, tagIndex));
                 resynch();
             } else {
                 // closing tag
@@ -174,7 +150,7 @@ function convert(MathJax) {
             if(openTag === '[') {
                 switch(tag) {
                 case ']':
-                    writeOut();
+                    openTag = false;
                     break;
                 case '[':
                     repMismatch();
@@ -199,17 +175,59 @@ function convert(MathJax) {
                     break;
                 default:
                     // )
-                    writeOut();
+                    openTag = false;
                     break;
                 }
             }
         }
     }
     if(openTag) {
+        ok = false;
         reportError(`no end tag for \\${openTag} at line ${openLine}`);
     }
-    // copy remaining text
-    toBuffer(textIn.slice(startIndex));
+    return ok;
+}
+
+function convert(MathJax) {
+    let textIn = fs.readFileSync(inFile, "utf8");
+
+    if(!checkParse(textIn)) {
+        return;
+    }
+
+    // process display math first so any included inline math is not processed
+    let dispRe = /\\\[([^]+?)\\\]/g;
+
+    function dispReplacer(match, p1) {
+        let mathExp = writeMath(MathJax, p1, false);
+        // encode inline tags so don't get processed
+        return `<span class="align-center">${mathExp}</span>`;
+    }
+
+    let textOut = textIn.replace(dispRe, dispReplacer);
+
+    // process inline math
+    // include preceding nbsp if present
+    // include following punctuation character or nbsp
+    const inlineRe = /(&nbsp;|\u00a0)?\\\(([^]+?)\\\)(,|\.|;|:|'|\?|\)|]|(&nbsp;|\u00a0))?/g;
+
+    function ilReplacer(match, p1, p2, p3, p4) {
+        let mathExp = writeMath(MathJax, p2, true);
+        if(p1 || p3) {
+            let precede = p1 ? " " : "";
+            let follow = "";
+            // if nbsp replace by space
+            if (p4) {
+                follow = " ";
+            } else if (p3) {
+                follow = p3;
+            }
+            mathExp = `<span class="nowrap">${precede}${mathExp}${follow}</span>`;
+        }
+        return mathExp;
+    }
+
+    textOut = textOut.replace(inlineRe, ilReplacer);
     fs.writeFileSync(outFile, textOut);
     console.log("Finished");
 }
