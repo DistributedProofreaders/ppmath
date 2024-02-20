@@ -4,8 +4,8 @@ const fs = require("fs"); // file system
 const mj = require("mathjax");
 const crypto = require("crypto");
 
-//const packageJson = require('../package.json');
-//console.log("m2svg version ", packageJson.version);
+const packageJson = require('../package.json');
+console.log("m2svg version ", packageJson.version);
 
 const myArgs = process.argv.slice(2);
 if(myArgs.length !== 2) {
@@ -15,6 +15,7 @@ if(myArgs.length !== 2) {
 
 let inFile = myArgs[0];
 let outFile = myArgs[1];
+let MathJax = null;
 
 const imageDir = "images";
 if (!fs.existsSync(imageDir)) {
@@ -41,7 +42,7 @@ function gFix(txt) {
     return txt;
 }
 
-function writeMath(MathJax, mathTxt, inLine) {
+function writeMath(mathTxt, inLine) {
     const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
     let svgCode = MathJax.startup.adaptor.innerHTML(svg);
 
@@ -114,7 +115,7 @@ function writeMath(MathJax, mathTxt, inLine) {
 }
 
 function checkParse(txt) {
-    let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
+    let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)|(<!--)|(-->)/g;
     let result;
     let lineNum = 1;
     let tag;
@@ -132,17 +133,40 @@ function checkParse(txt) {
         openLine = lineNum;
     }
 
+    let inComment = false;
     while((result = mathRegex.exec(txt)) !== null) {
         if(result[1]) { // newline
             lineNum += 1;
             continue;
         }
+        if(result[2]) { // comment start
+            if(inComment) {
+                ok = false;
+                reportError(`already in comment at line ${lineNum}`);
+            }
+            inComment = true;
+            continue;
+        }
+        if(result[3]) { // comment end
+            if(!inComment) {
+                ok = false;
+                reportError(`extra comment end at line ${lineNum}`);
+            }
+            inComment = false;
+            continue;
+        }
+        if(inComment) {
+            // look for comment end before looking at tags
+            continue;
+        }
+
         tag = result[0].charAt(1);
         if(!openTag) {
             if ((tag === '(') || (tag === '[')) {
                 resynch();
             } else {
                 // closing tag
+                ok = false;
                 reportError(`no start tag for \\${tag} at line ${lineNum}`);
             }
         } else {
@@ -185,26 +209,24 @@ function checkParse(txt) {
         ok = false;
         reportError(`no end tag for \\${openTag} at line ${openLine}`);
     }
+    if(inComment) {
+        ok = false;
+        reportError(`unterminated comment`);
+    }
     return ok;
 }
 
-function convert(MathJax) {
-    let textIn = fs.readFileSync(inFile, "utf8");
-
-    if(!checkParse(textIn)) {
-        return;
-    }
-
+function processBlock(text) {
     // process display math first so any included inline math is not processed
     let dispRe = /\\\[([^]+?)\\\]/g;
 
     function dispReplacer(match, p1) {
-        let mathExp = writeMath(MathJax, p1, false);
+        let mathExp = writeMath(p1, false);
         // encode inline tags so don't get processed
         return `<span class="align-center">${mathExp}</span>`;
     }
 
-    let textOut = textIn.replace(dispRe, dispReplacer);
+    let textOut = text.replace(dispRe, dispReplacer);
 
     // process inline math
     // include preceding nbsp if present
@@ -212,7 +234,7 @@ function convert(MathJax) {
     const inlineRe = /(&nbsp;|\u00a0)?\\\(([^]+?)\\\)(,|\.|;|:|'|\?|\)|]|(&nbsp;|\u00a0))?/g;
 
     function ilReplacer(match, p1, p2, p3, p4) {
-        let mathExp = writeMath(MathJax, p2, true);
+        let mathExp = writeMath(p2, true);
         if(p1 || p3) {
             let precede = p1 ? " " : "";
             let follow = "";
@@ -228,6 +250,43 @@ function convert(MathJax) {
     }
 
     textOut = textOut.replace(inlineRe, ilReplacer);
+    return textOut;
+}
+
+function processComments(textIn) {
+    let startIndex = 0;
+    let textOut = '';
+    let commEndLen = "-->".length;
+    let result;
+    // look for comment start or end, assume correctly matched
+    let commRegex = /(<!--)|(-->)/g;
+    while((result = commRegex.exec(textIn)) !== null) {
+        if(result[1]) { // comment start
+            let commStartIndex = result.index;
+            textOut += processBlock(textIn.slice(startIndex, commStartIndex));
+            startIndex = commStartIndex;
+        } else { // must be end comment
+            let commEndIndex = result.index + commEndLen;
+            textOut += textIn.slice(startIndex, commEndIndex);
+            startIndex = commEndIndex;
+        }
+    }
+    // process remaining text
+    textOut += processBlock(textIn.slice(startIndex, textIn.length));
+    return textOut;
+}
+
+
+function convert(mJax) {
+    MathJax = mJax;
+    let textIn = fs.readFileSync(inFile, "utf8");
+
+    if(!checkParse(textIn)) {
+        return;
+    }
+
+    let textOut = processComments(textIn);
+
     fs.writeFileSync(outFile, textOut);
     console.log("Finished");
 }
