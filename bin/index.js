@@ -102,7 +102,7 @@ function writeMath(mathTxt, inLine) {
     // store svg in a file
     fs.writeFileSync(fileName, svgCode);
 
-    let alt = `alt=" "`;
+    let alt = `alt=""`;
     // if display mode mathTxt can include inline tags
     // replace by $ to avoid processing them later
     // use $$, $ has special meaning in replace()
