@@ -1,21 +1,49 @@
 #!/usr/bin/env node
 
+const { parseArgs } = require('node:util');
+const options = {
+    mode: {
+        type: 'string',
+        short: 'm',
+        default: 's',
+    },
+    infile: {
+        type: 'string',
+        short: 'i',
+    },
+    outfile: {
+        type: 'string',
+        short: 'o',
+    },
+};
+const result = parseArgs({ options });
+let values = result.values;
+//console.log(result);
+if (!(values.infile && values.outfile)) {
+    console.log("use m2svg -i infile -o outfile -m mode (where mode is i: svg image, s: inline svg, m: mathml)");
+    return;
+}
+
 const fs = require("fs"); // file system
 const mj = require("mathjax");
+
 const crypto = require("crypto");
 
 const packageJson = require('../package.json');
 console.log("m2svg version ", packageJson.version);
 
-const myArgs = process.argv.slice(2);
+/*const myArgs = process.argv.slice(2);
 if(myArgs.length !== 2) {
     console .log("use 'm2svg infile outfile'");
     process.exit();
+}*/
+
+let inFile = values.infile;
+let outFile = values.outfile;
+
+if (values.mode == 's') {
+    const crypto = require("crypto");
 }
-
-let inFile = myArgs[0];
-let outFile = myArgs[1];
-
 var textOut = "";
 
 const imageDir = "images";
@@ -58,60 +86,62 @@ function writeMath(MathJax, mathTxt, inLine) {
         return result[1];
     }
 
-    // make serial file nunmbers and put them in a map with keys so we can
-    // re-use them for the same math.
-    // make a key from the original equation including end tags in case same
-    // math is both display and inline.
-    const hash = crypto.createHmac("md5", mathTxt).digest("hex");
-    let fileNumber = fileNumbers.get(hash);
-    if(fileNumber === undefined) {
-        fileSerial += 1;
-        fileNumber = fileSerial;
-        // add it to the map
-        fileNumbers.set(hash, fileNumber);
-    }
-    const fileName = `${imageDir}/${fileNumber}.svg`;
+    if (values.mode == 's') {
+        // make serial file nunmbers and put them in a map with keys so we can
+        // re-use them for the same math.
+        // make a key from the original equation including end tags in case same
+        // math is both display and inline.
+        const hash = crypto.createHmac("md5", mathTxt).digest("hex");
+        let fileNumber = fileNumbers.get(hash);
+        if(fileNumber === undefined) {
+            fileSerial += 1;
+            fileNumber = fileSerial;
+            // add it to the map
+            fileNumbers.set(hash, fileNumber);
+        }
+        const fileName = `${imageDir}/${fileNumber}.svg`;
 
-    // write html to display the image
-    let source = `src="${fileName}"`;
+        // write html to display the image
+        let source = `src="${fileName}"`;
 
-    // build style for html from svg
-    // need vertical-align for html
-    let re = /style="vertical-align: (.+?);"/;
-    result = re.exec(svgCode);
-    let vAlign = result ? result[1] : "0px";
+        // build style for html from svg
+        // need vertical-align for html
+        let re = /style="vertical-align: (.+?);"/;
+        result = re.exec(svgCode);
+        let vAlign = result ? result[1] : "0px";
 
-    // for epub to work in ADE etc. we need width and height from svg also in
-    // style and to replace svg width and height with values from viewBox
-    re = /width="(.+?)"/;
-    result = re.exec(svgCode);
-    let width = result ? result[1] : "0px";
+        // for epub to work in ADE etc. we need width and height from svg also in
+        // style and to replace svg width and height with values from viewBox
+        re = /width="(.+?)"/;
+        result = re.exec(svgCode);
+        let width = result ? result[1] : "0px";
 
-    re = /height="(.+?)"/;
-    result = re.exec(svgCode);
-    let height = result ? result[1] : "0px";
+        re = /height="(.+?)"/;
+        result = re.exec(svgCode);
+        let height = result ? result[1] : "0px";
 
-    let style = `style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
+        let style = `style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
 
-    re = /viewBox=".+? .+? (.+?) (.+?)"/;
-    result = re.exec(svgCode);
-    width = result[1];
-    height = result[2];
-    svgCode = svgCode.replace(/ width=".*?"/, ` width="${width}px"`);
-    svgCode = svgCode.replace(/ height=".*?"/, ` height="${height}px"`);
+        re = /viewBox=".+? .+? (.+?) (.+?)"/;
+        result = re.exec(svgCode);
+        width = result[1];
+        height = result[2];
+        svgCode = svgCode.replace(/ width=".*?"/, ` width="${width}px"`);
+        svgCode = svgCode.replace(/ height=".*?"/, ` height="${height}px"`);
 
-    svgCode = gFix(svgCode);
+        svgCode = gFix(svgCode);
 
-    // store svg in a file
-    fs.writeFileSync(fileName, svgCode);
+        // store svg in a file
+        fs.writeFileSync(fileName, svgCode);
 
-    let alt = `alt=" "`;
-    const dataTex = `data-tex="${mathTxt}"`;
-    const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
-    if(inLine) {
-        toBuffer(imgTag);
-    } else { // display
-        toBuffer(`<span class="align-center">${imgTag}</span>`);
+        let alt = `alt=" "`;
+        const dataTex = `data-tex="${mathTxt}"`;
+        const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
+        if(inLine) {
+            toBuffer(imgTag);
+        } else { // display
+            toBuffer(`<span class="align-center">${imgTag}</span>`);
+        }
     }
     // indicate progress
     process.stdout.write(".");
