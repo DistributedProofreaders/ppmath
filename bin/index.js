@@ -105,7 +105,8 @@ function sFix(txt) {
 }
 
 function writeMath(MathJax, mathTxt, inLine) {
-    const dataTex = `data-tex="${mathTxt}"`;
+    const taggedMath = inLine ? `\\(${mathTxt}\\)` : `\\[${mathTxt}\\]`;
+    const dataTex = `data-tex="${taggedMath}"`;
     if (values.mode == 'm') {
         // mathjax errors will get marked in mml so no need to catch
         const mml = MathJax.tex2mml(mathTxt, {display: !inLine});
