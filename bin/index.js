@@ -20,19 +20,20 @@ const options = {
         short: 'g',
         default: '0.3em',
     },
+    reverse: {
+        type: 'boolean',
+        short: 'r',
+        default: false,
+    },
 };
 const result = parseArgs({ options });
 let values = result.values;
 if (!(values.infile && values.outfile)) {
-    console.log("use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em)");
+    console.log("use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em) (-r to revert)");
     return;
 }
 
 const fs = require("fs"); // file system
-const mj = require("mathjax");
-
-const crypto = require("crypto");
-
 const packageJson = require('../package.json');
 console.log("m2svg version ", packageJson.version);
 
@@ -40,6 +41,20 @@ let inFile = values.infile;
 let outFile = values.outfile;
 
 let textIn = fs.readFileSync(inFile, "utf8");
+
+if (values.reverse) {
+    console.log("reversing");
+    textIn = textIn.replace(/<span.*?data-tex="(\\\[[^]*?\\])"[^]*?<\/span>/g, "$1");
+    textIn = textIn.replace(/<span.*?data-tex="(\\\([^]*?\\\))"[^]*?<\/span>/g, "$1");
+    textIn = textIn.replace(/<img.*?data-tex="(\\\([^]*?\\\))">/g, "$1");
+    fs.writeFileSync(outFile, textIn);
+    return;
+}
+
+const mj = require("mathjax");
+
+const crypto = require("crypto");
+
 
 // make styles
 // for inline svg MathJax.startup.adaptor.textContent(MathJax.svgStylesheet()) works but
