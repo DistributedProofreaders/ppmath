@@ -95,6 +95,15 @@ function gFix(txt) {
     return txt;
 }
 
+function sFix(txt) {
+    // remove attributes from inline svg tags that cause validation problems
+    // remove focusable
+    txt = txt.replace(/focusable=".*?"/g, "");
+    // remove colon from id
+    txt = txt.replace(/id="mjx-eqn:/g, `id="mjx-eqn`);
+    return txt;
+}
+
 function writeMath(MathJax, mathTxt, inLine) {
     const dataTex = `data-tex="${mathTxt}"`;
     if (values.mode == 'm') {
@@ -175,6 +184,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         let svgCode = MathJax.startup.adaptor.innerHTML(svg);
         let svgContainer = MathJax.startup.adaptor.outerHTML(svg);
         // errors will be marked in svg so no need to catch
+        svgCode = sFix(svgCode);
         if(inLine) {
             toBuffer(`<span ${dataTex}>${svgCode}</span>`);
         } else {
