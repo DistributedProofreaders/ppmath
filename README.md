@@ -1,5 +1,5 @@
 # m2svg
-This command-line tool processes a text file (usually html) which includes LaTex maths formulae. It makes an image for each formula which it places in a directory named 'images'. It produces another file where each formula is replaced by a link to an image.
+This command-line tool processes a text file (usually html) which includes LaTex maths formulae. It converts the formulae into a representation of the math in one of three different ways: as svg images, as inline svg, or as MathML.
 
 ## Installation
 First, nodejs and npm must be installed on your computer. The procedure varies with the operating system:
@@ -20,44 +20,47 @@ In the command window type:
 
 ## Use
 The tool is run from a command prompt console. Make a directory where you want to work and place the file you want to convert in it.
+The file should also contain a line `__style_holder` inside the `<style>` section of the header. This will be replaced by css appropriate to the mode in use.
 
 In the command window navigate to the working directory and type:
 
-`m2svg infile outfile`
+`m2svg -i infile -o outfile -m mode -g margin`
 
-where `infile` is the file to convert and `outfile` will be the converted file. The image files will be placed in a subdirectory of the working directory called "images". This directory will be created if it does not already exist.
+`infile` is the file to convert. Must be specified.
+
+`outfile` will be the converted file. Must be specified.
+
+`mode` is one of `i` for embedded images, `s` for inline svg, or `m` for MathML. If not specified the default is `i`.
+
+`margin` specifies the space above and below display expressions in any css units. If not specified the default is `0.3em`
+
+In the case of mode `i` the image files will be placed in a subdirectory of the working directory called "images". This directory will be created if it does not already exist.
 
 The program will normally run until the conversion is complete. It prints dots to show its progress. Pressing ctrl-c will stop the run.
+In the converted file the maths expressions, delimited by the tags `\[` and `\]` for 'display' expressions or `\(` and `\)` for 'inline' expressions, are replaced in the output file by the appropriate text or links. These will contain a 'data-tex' attribute which shows the original maths expression.
 
-In the converted file the maths expressions, delimited by the tags `\[` and `\]` for 'display' expressions or `\(` and `\)` for 'inline' expressions, are replaced by `<img>` links.
+If the program detects any tags that do not match up correctly it will print a message at the terminal showing the number of the line where the error occurred and continue working. If there are any errors in the math expressions then, in the `i` option, a message will be printed to the console describing the error and the number of the line near where it occurs. For the other options the error will be marked in the output file.
 
-The 'data-tex' attribute will contain the original maths expression.
+### Reversion
 
-If the program detects any tags that do not match up correctly it will print a message at the terminal showing the number of the line where the error occurred and continue working.
+There is a `revert` option which will convert the resulting file back to its original form. type:
+
+`m2svg -i infile -o outfile -r`
+
+(This does not change the css inserted in the header)
 
 ### Updating
 On subequent occasions, to ensure you have the latest version of m2svg type `npm update -g m2svg`
 
-## Notes
-### Images
-The tool makes SVG images using Mathjax. The names of the images will be a serial number. Any duplicated expressions will link to the same image.
-
-The display images are centre-aligned horizontally. This is done by css. The html (or associated css file) should include something like the following:
-
-```css
-<style>
-.align-center {
-    display: block;
-    text-align: center;
-    margin-top: 0.3em;
-}
-</style>
-```
-The vertical space above and below the image can be adjusted by changing margin-top and margin-bottom.
-
-### Reversion
-An application is available to revert the file with image links back to its original form.
-
-### Limitations
+## Comparison of the modes
+### Image mode
+This works with most browsers and ereaders.
+The names of the images will be a serial number. Any duplicated expressions will link to the same image.
 Some markup will not produce a usable image including: \tag{}. For tagged expressions you can use \text markup suitably spaced.
 The \multline markup will generate a multi-line image. But since we do not know at this stage the width of the device where the file will be displayed a width of around 1000 pixels is assumed. If this is not satisfactory \multline could be simulated using \aligned or \gather with \quad or other spacing.
+
+### Inline svg mode
+This works with most browsers and ereaders. \tag{} markup will work even on old ereaders to make a label placed near the right margin.
+
+### MathML mode
+Support for this is not good. Simple expressions will work in browsers but not old ereaders. \tag{} markup doesn't currently work in Firefox or Chromium. It works well in the Calibre epub viewer even with \tag{}.
