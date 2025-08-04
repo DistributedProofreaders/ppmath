@@ -308,6 +308,7 @@ function convert(MathJax) {
 }
 
 mj.init({
-    loader: {load: ['input/tex', 'output/svg']}
+    loader: {load: ['input/tex', 'output/svg', '[tex]/unicode']},
+    tex: {packages: {'[+]': ['unicode']}}
 }).then(convert)
     .catch((err) => reportError(err.message));
