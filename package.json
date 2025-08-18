@@ -4,7 +4,7 @@
   "description": "make svg images for LaTex expressions",
   "main": "bin/index.js",
   "bin": {
-    "m2svg": "./bin/index.js"
+    "m2svg": "bin/index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
