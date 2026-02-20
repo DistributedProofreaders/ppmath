@@ -188,7 +188,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         // store svg in a file
         fs.writeFileSync(fileName, svgCode);
 
-        let alt = `alt=" "`;
+        let alt = `alt=""`;
         const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
         if(inLine) {
             toBuffer(imgTag);
