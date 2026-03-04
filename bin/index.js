@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-
-const { parseArgs } = require('node:util');
+/*
+import { parseArgs } from 'node:util';
 const options = {
     mode: {
         type: 'string',
@@ -30,30 +30,71 @@ const result = parseArgs({ options });
 let values = result.values;
 if (!(values.infile && values.outfile)) {
     console.log("use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em) (-r to revert)");
-    return;
+//    return;
 }
 
-const fs = require("fs"); // file system
-const packageJson = require('../package.json');
-console.log("m2svg version ", packageJson.version);
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+
+import pj from '../package.json' with { type: 'json' };
+console.log("m2svg version ", pj.version);
 
 let inFile = values.infile;
 let outFile = values.outfile;
 
-let textIn = fs.readFileSync(inFile, "utf8");
+let textIn = readFileSync(inFile, "utf8");
 
 if (values.reverse) {
     console.log("reversing");
     textIn = textIn.replace(/<span.*?data-tex="(\\\[[^]*?\\])"[^]*?<\/span>/g, "$1");
     textIn = textIn.replace(/<span.*?data-tex="(\\\([^]*?\\\))"[^]*?<\/span>/g, "$1");
     textIn = textIn.replace(/<img.*?data-tex="(\\\([^]*?\\\))">/g, "$1");
-    fs.writeFileSync(outFile, textIn);
-    return;
+    writeFileSync(outFile, textIn);
 }
 
-const mj = require("mathjax");
+//    loader: {load: ['input/tex', 'output/svg', '[tex]/unicode']},
+//    tex: {packages: {'[+]': ['unicode']}}
 
-const crypto = require("crypto");
+*/
+global.MathJax = {
+  loader: {
+    paths: {mathjax: '@mathjax/src/bundle'},
+    load: [/*'input/tex', 'output/svg', '[tex]/unicode',*/ 'adaptors/liteDOM'],
+    require: (file => import(file))
+  },
+  // additional configuration here
+};
+
+await import('@mathjax/src/bundle/tex-svg.js');
+await MathJax.startup.promise;
+
+// your code that uses MathJax here
+
+const EM = 16;          // size of an em in pixels
+const EX = 8;           // size of an ex in pixels
+const WIDTH = 80 * EM;  // width of container for linebreaking
+
+function typeset(math, display = true) {
+  return MathJax.tex2svgPromise(math, {
+    display: display,
+    em: EM,
+    ex: EX,
+    containerWidth: WIDTH
+  }).then((node) => {
+    const adaptor = MathJax.startup.adaptor;
+    return(adaptor.serializeXML(adaptor.tags(node, 'svg')[0]));
+  }).catch(err => console.error(err));
+}
+
+const math = process.argv[2] || '';
+const svg = await typeset(math);
+console.log(svg);
+
+MathJax.done();
+/*
+//const mj = require("mathjax");
+//import mj from "mathjax";
+
+import { createHmac } from "crypto";
 
 
 // make styles
@@ -67,8 +108,8 @@ const imageDir = "images";
 switch (values.mode) {
 case 'i':
     mStyle = `.align-center {display: block; text-align: center; ${margString}}`;
-    if (!fs.existsSync(imageDir)) {
-        fs.mkdirSync(imageDir);
+    if (!existsSync(imageDir)) {
+        mkdirSync(imageDir);
     }
     break;
 case 's':
@@ -148,7 +189,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         // re-use them for the same math.
         // make a key from the original equation including end tags in case same
         // math is both display and inline.
-        const hash = crypto.createHmac("md5", mathTxt).digest("hex");
+        const hash = createHmac("md5", mathTxt).digest("hex");
         let fileNumber = fileNumbers.get(hash);
         if(fileNumber === undefined) {
             fileSerial += 1;
@@ -189,7 +230,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         svgCode = gFix(svgCode);
 
         // store svg in a file
-        fs.writeFileSync(fileName, svgCode);
+        writeFileSync(fileName, svgCode);
 
         let alt = `alt=""`;
         const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
@@ -306,7 +347,7 @@ function convert(MathJax) {
     }
     // copy remaining text
     toBuffer(textIn.slice(startIndex));
-    fs.writeFileSync(outFile, textOut);
+    writeFileSync(outFile, textOut);
     console.log("Finished");
 }
 
@@ -315,3 +356,4 @@ mj.init({
     tex: {packages: {'[+]': ['unicode']}}
 }).then(convert)
     .catch((err) => reportError(err.message));
+*/

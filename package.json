@@ -1,6 +1,7 @@
 {
   "name": "m2svg",
   "version": "2.1.1",
+  "type": "module",
   "description": "make svg images for LaTex expressions",
   "main": "bin/index.js",
   "bin": {
@@ -12,7 +13,8 @@
   "author": "rp31",
   "license": "GPL",
   "dependencies": {
+    "@mathjax/src": "^4.1.1",
     "fs": "^0.0.1-security",
-    "mathjax": "^3.2.2"
+    "mathjax": "^4.1.1"
   }
 }
