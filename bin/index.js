@@ -84,6 +84,9 @@ default:
 
 textIn = textIn.replace("__style_holder", mStyle);
 
+// remove html commented sections
+textIn = textIn.replace(/<!--.*?-->/gs, "");
+
 var textOut = "";
 
 function toBuffer(txt) {
