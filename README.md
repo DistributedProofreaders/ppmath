@@ -8,7 +8,11 @@ For Linux, nodejs and npm can be installed from the distribution.
 
 For Windows, download and run the installer from https://nodejs.org.
 
-For Mac, ?
+For macOS, either:
+* Use Homebrew to `brew install node`, or,
+* Download and run the macOS installer from https://nodejs.org as mentioned above.
+
+If you install using the nodejs installer, you will probably have to use sudo with `npm install`, as detailed below; the homebrew install should not require sudo.
 
 It is then necessary to open a command prompt:--
 In windows 10 click on the windows icon and a list of programs will appear. In windows 11, click on the windows icon and in the box which then appears click "All Apps" to see the list. In the list there will be a Node.js folder and within it the Node.js command prompt; this is the one to use.
