@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/*
+
 import { parseArgs } from 'node:util';
 const options = {
     mode: {
@@ -34,6 +34,7 @@ if (!(values.infile && values.outfile)) {
 }
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { createHmac } from "crypto";
 
 import pj from '../package.json' with { type: 'json' };
 console.log("m2svg version ", pj.version);
@@ -53,49 +54,6 @@ if (values.reverse) {
 
 //    loader: {load: ['input/tex', 'output/svg', '[tex]/unicode']},
 //    tex: {packages: {'[+]': ['unicode']}}
-
-*/
-global.MathJax = {
-  loader: {
-    paths: {mathjax: '@mathjax/src/bundle'},
-    load: [/*'input/tex', 'output/svg', '[tex]/unicode',*/ 'adaptors/liteDOM'],
-    require: (file => import(file))
-  },
-  // additional configuration here
-};
-
-await import('@mathjax/src/bundle/tex-svg.js');
-await MathJax.startup.promise;
-
-// your code that uses MathJax here
-
-const EM = 16;          // size of an em in pixels
-const EX = 8;           // size of an ex in pixels
-const WIDTH = 80 * EM;  // width of container for linebreaking
-
-function typeset(math, display = true) {
-  return MathJax.tex2svgPromise(math, {
-    display: display,
-    em: EM,
-    ex: EX,
-    containerWidth: WIDTH
-  }).then((node) => {
-    const adaptor = MathJax.startup.adaptor;
-    return(adaptor.serializeXML(adaptor.tags(node, 'svg')[0]));
-  }).catch(err => console.error(err));
-}
-
-const math = process.argv[2] || '';
-const svg = await typeset(math);
-console.log(svg);
-
-MathJax.done();
-/*
-//const mj = require("mathjax");
-//import mj from "mathjax";
-
-import { createHmac } from "crypto";
-
 
 // make styles
 // for inline svg MathJax.startup.adaptor.textContent(MathJax.svgStylesheet()) works but
@@ -123,6 +81,8 @@ default:
     break;
 }
 
+console.log(values.mode);
+
 textIn = textIn.replace("__style_holder", mStyle);
 
 // remove html commented sections
@@ -138,8 +98,74 @@ function reportError(msg) {
     console.log('\n' + msg);
 }
 
+global.MathJax = {
+  loader: {
+    paths: {mathjax: '@mathjax/src/bundle'},
+    load: ['adaptors/liteDOM'],
+//    load: ['input/tex', 'output/svg', '[tex]/unicode', 'adaptors/liteDOM'],
+    require: (file => import(file))
+  },
+    options: {
+        enableSpeech: true,       // false to disable speech strings
+        enableBraille: false,      // false to disable Braille notation
+        speechError: (doc, math, err) => doc.speechError(doc, math, err),  // called if speech generation fails
+        sre: {
+            domain: 'mathspeak',    // speech rules domain
+            style: 'default',       // speech rules style
+            locale: 'en'            // the language to use (en, fr, es, de, it)
+        },
+    }
+  // additional configuration here
+};
+
+const svgCss = [
+  'svg a{fill:blue;stroke:blue}',
+  '[data-mml-node="merror"]>g{fill:red;stroke:red}',
+  '[data-mml-node="merror"]>rect[data-background]{fill:yellow;stroke:none}',
+  '[data-frame],[data-line]{stroke-width:70px;fill:none}',
+  '.mjx-dashed{stroke-dasharray:140}',
+  '.mjx-dotted{stroke-linecap:round;stroke-dasharray:0,140}',
+  'use[data-c]{stroke-width:3px}'
+].join('');
+const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+const SVGXMLNS = 'http://www.w3.org/2000/svg';
+
 let fileSerial = 0;
 const fileNumbers = new Map();
+
+await import('@mathjax/src/bundle/tex-svg.js');
+await MathJax.startup.promise;
+
+// your code that uses MathJax here
+
+const EM = 16;          // size of an em in pixels
+const EX = 8;           // size of an ex in pixels
+const WIDTH = 80 * EM;  // width of container for linebreaking
+
+function typeset(math, display = true) {
+  return MathJax.tex2svgPromise(math, {
+    display: display,
+    em: EM,
+    ex: EX,
+    containerWidth: WIDTH
+  }).then((node) => {
+    const adaptor = MathJax.startup.adaptor;
+//    console.log(adaptor.outerHTML(node));
+    return(adaptor.serializeXML(adaptor.tags(node, 'svg')[0]));
+  }).catch(err => console.error(err));
+}
+
+//const math = process.argv[2] || '';
+//const math = "a=b";
+//const svg = await typeset(math);
+//console.log(svg);
+await convert();
+
+MathJax.done();
+
+//const mj = require("mathjax");
+//import mj from "mathjax";
+
 
 function gFix(txt) {
     // remove attributes from g tags that cause validation problems
@@ -163,12 +189,32 @@ function sFix(txt) {
     return txt;
 }
 
-function writeMath(MathJax, mathTxt, inLine) {
+async function getSvgImage(math, options = {}) {
+  const adaptor = MathJax.startup.adaptor;
+  const result = await MathJax.tex2svgPromise(math, options);
+  const svg = adaptor.tags(result, 'svg')[0];
+  const defs = adaptor.tags(svg, 'defs')[0] || adaptor.append(svg, adaptor.create('defs'));
+  console.log(adaptor.getAttribute(svg, 'style'));
+  adaptor.append(defs, adaptor.node('style', {}, [adaptor.text(svgCss)], SVGXMLNS));
+  adaptor.removeAttribute(svg, 'role');
+  adaptor.removeAttribute(svg, 'focusable');
+  adaptor.removeAttribute(svg, 'aria-hidden');
+  const g = adaptor.tags(svg, 'g')[0];
+  adaptor.setAttribute(g, 'stroke', 'black');
+  adaptor.setAttribute(g, 'fill', 'black');
+  return xmlDeclaration + '\n' + adaptor.serializeXML(svg);
+}
+
+async function writeMath(mathTxt, inLine) {
+    // mathjax bug ?
+    if (inLine) {
+        mathTxt = `{${mathTxt}}`;
+    }
     const taggedMath = inLine ? `\\(${mathTxt}\\)` : `\\[${mathTxt}\\]`;
     const dataTex = `data-tex="${taggedMath}"`;
     if (values.mode == 'm') {
         // mathjax errors will get marked in mml so no need to catch
-        const mml = MathJax.tex2mml(mathTxt, {display: !inLine});
+        const mml = await MathJax.tex2mmlPromise(mathTxt, {display: !inLine});
         if(inLine) {
             toBuffer(`<span ${dataTex}>${mml}</span>`);
         } else { // display
@@ -176,8 +222,8 @@ function writeMath(MathJax, mathTxt, inLine) {
         }
     } else if (values.mode == 'i') {
         const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
-        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
-
+//        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
+        let svgCode = await getSvgImage(mathTxt, {display: !inLine});
         // if svgCode contains error text return it.
         const reErr = /data-mjx-error="(.*?)"/;
         let result = reErr.exec(svgCode);
@@ -227,7 +273,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         svgCode = svgCode.replace(/ width=".*?"/, ` width="${width}px"`);
         svgCode = svgCode.replace(/ height=".*?"/, ` height="${height}px"`);
 
-        svgCode = gFix(svgCode);
+//        svgCode = gFix(svgCode);
 
         // store svg in a file
         writeFileSync(fileName, svgCode);
@@ -240,15 +286,19 @@ function writeMath(MathJax, mathTxt, inLine) {
             toBuffer(`<span class="align-center">${imgTag}</span>`);
         }
     } else if (values.mode == 's') {
-        const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
-        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
-        let svgContainer = MathJax.startup.adaptor.outerHTML(svg);
+        console.log(mathTxt);
+        const svgCode = await typeset(mathTxt, !inLine);
+
+//        const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
+//        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
+  //      let svgContainer = MathJax.startup.adaptor.outerHTML(svg);
         // errors will be marked in svg so no need to catch
-        svgCode = sFix(svgCode);
+    //    svgCode = sFix(svgCode);
         if(inLine) {
             toBuffer(`<span ${dataTex}>${svgCode}</span>`);
         } else {
-            let spanClass = svgContainer.includes(`width="full"`) ? "dispflex" : "dispblock";
+    //        let spanClass = svgContainer.includes(`width="full"`) ? "dispflex" : "dispblock";
+            let spanClass = "dispblock";
             toBuffer(`<span class='${spanClass}' ${dataTex}>${svgCode}</span>`);
         }
     }
@@ -257,7 +307,7 @@ function writeMath(MathJax, mathTxt, inLine) {
     return false;
 }
 
-function convert(MathJax) {
+async function convert() {
     let startIndex = 0;
     // look for opening or closing tags or newlines
     let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
@@ -279,10 +329,10 @@ function convert(MathJax) {
         startIndex = tagIndex + 2;
     }
 
-    function writeOut() {
+    async function writeOut() {
         let inLine = (openTag === '(');
         let mathText = textIn.slice(startIndex, tagIndex);
-        let errorText = writeMath(MathJax, mathText, inLine);
+        let errorText = await writeMath(mathText, inLine);
         startIndex = tagIndex + 2;
         if(errorText) {
             reportError(`MathJax error near line ${lineNum}: ${errorText} : ${mathText}`);
@@ -311,7 +361,7 @@ function convert(MathJax) {
             if(openTag === '[') {
                 switch(tag) {
                 case ']':
-                    writeOut();
+                    await writeOut();
                     break;
                 case '[':
                     repMismatch();
@@ -336,7 +386,7 @@ function convert(MathJax) {
                     break;
                 default:
                     // )
-                    writeOut();
+                    await writeOut();
                     break;
                 }
             }
@@ -351,6 +401,8 @@ function convert(MathJax) {
     console.log("Finished");
 }
 
+//convert();
+/*
 mj.init({
     loader: {load: ['input/tex', 'output/svg', '[tex]/unicode']},
     tex: {packages: {'[+]': ['unicode']}}
