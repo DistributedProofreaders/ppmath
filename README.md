@@ -34,7 +34,7 @@ In the command window navigate to the working directory and type:
 
 `outfile` will be the converted file. Must be specified.
 
-`mode` is one of `i` for embedded images, `s` for inline svg, or `m` for MathML. If not specified the default is `i`.
+`mode` is one of `i` for embedded images, `s` for inline svg, `m` for MathML or `d` for a dummy run. If not specified the default is `i`.
 
 `margin` specifies the space above and below display expressions in any css units. If not specified the default is `0.3em`
 
@@ -56,7 +56,14 @@ There is a `reverse` option which will convert the processed file back to its or
 ### Updating
 On subsequent occasions, to ensure you have the latest version of m2svg type `npm update -g m2svg`
 
+### Additional Features
+The macro `\reflect{...}` gives a reversed character.
+
 ## Comparison of the modes
+
+### Dummy run
+This does not produce any output but just checks that the tags `\[`, `\]`, `\(` and `\)` are correctly matched and reports any errors.
+
 ### Image mode
 This works with most browsers and ereaders.
 The names of the images will be a serial number. Results in a large file size for the images. Any duplicated expressions will link to the same image which helps to keep the size down .
