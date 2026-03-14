@@ -14,6 +14,6 @@
   "license": "GPL",
   "dependencies": {
     "@mathjax/src": "^4.1.1",
-    "mathjax-img": "^4.0.0"
+    "mathjax-img": "^5.0.0"
   }
 }
