@@ -1,6 +1,6 @@
 {
   "name": "m2svg",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "description": "make svg images for LaTex expressions",
   "main": "bin/index.js",
