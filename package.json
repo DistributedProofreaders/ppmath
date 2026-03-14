@@ -13,6 +13,7 @@
   "author": "rp31",
   "license": "GPL",
   "dependencies": {
-    "@mathjax/src": "^4.1.1"
+    "@mathjax/src": "^4.1.1",
+    "mathjax-img": "^4.0.0"
   }
 }

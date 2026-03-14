@@ -94,6 +94,12 @@ textIn = textIn.replace("__style_holder", mStyle);
 textIn = textIn.replace(/<!--.*?-->/gs, "");
 
 var textOut = "";
+let fileSerial = 0;
+const fileNumbers = new Map();
+const EM = 16; // size of an em in pixels
+const EX = 8; // size of an ex in pixels
+const WIDTH = 80 * EM; // width of container for linebreaking
+const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
 
 function toBuffer(txt) {
     textOut += txt;
@@ -105,11 +111,12 @@ function reportError(msg) {
 
 global.MathJax = {
     loader: {
-        paths: { mathjax: "@mathjax/src/bundle" },
-        load: ["input/tex", "output/svg", "adaptors/liteDOM"],
+        paths: { mathjax: "@mathjax/src/bundle", img: "mathjax-img" },
+        load: ["input/tex", "output/svg", "adaptors/liteDOM", "[img]/browser/img"],
         require: (file) => import(file),
     },
     tex: {
+        packages: { "[+]": ["img"] },
         macros: {
             reflect: [
                 String.raw`{\style{transform: scaleX(-1); transform-origin: center; transform-box: content-box}{#1}}`,
@@ -120,20 +127,9 @@ global.MathJax = {
     // additional configuration here
 };
 
-const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
-
-let fileSerial = 0;
-const fileNumbers = new Map();
-
 await import("@mathjax/src/bundle/startup.js");
 await MathJax.startup.promise;
-
-const EM = 16; // size of an em in pixels
-const EX = 8; // size of an ex in pixels
-const WIDTH = 80 * EM; // width of container for linebreaking
-
 await convert();
-
 MathJax.done();
 
 async function getSvgImage(math, options = {}) {
