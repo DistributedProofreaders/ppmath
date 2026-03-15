@@ -57,7 +57,13 @@ There is a `reverse` option which will convert the processed file back to its or
 On subsequent occasions, to ensure you have the latest version of m2svg type `npm update -g m2svg`
 
 ### Additional Features
-The macro `\reflect{...}` gives a reversed character.
+Within a math expression the following macros are implemented:
+
+`\reflect{...}` gives a reversed character. E.g. `\(x = \reflect{\mathrm{D}}\)`.
+
+`\rotate{...}` gives a character rotated by 180 degrees. E.g. `\(x = \rotate{\mathrm{R}}\)`.
+
+`\img` enables a user-defined image to be inserted. E.g. `\[ x = \img[valign=-.5ex, width=1em, height=1em][alttext]{images/xyz.svg}\]`. Replace -.5ex, 1em, 1em, alttext, images/xyz.svg with whatever values you wish to use. svg, jpg and png image files are supported. This uses https://github.com/pkra/mathjax-img/blob/main/README.md.
 
 ## Comparison of the modes
 
@@ -74,4 +80,4 @@ The \multline markup will generate a multi-line image. But since we do not know 
 This works with most browsers and ereaders. \tag{} markup will work even on old ereaders to make a label placed near the right margin. The file size will be large, even more than the image mode because duplicated expressions will result in duplicated inline svg.
 
 ### MathML mode
-Support for this is limited. Simple expressions will work in browsers but not old ereaders. \tag{} markup doesn't currently work in Firefox or Chromium. MathML works well in the Calibre epub viewer even with \tag{}. An advantage is small file size.
+Support for this is limited. Firefox is quite good, other browsers less so. \tag{} markup doesn't currently work in Firefox or Chromium. MathML works well in the Calibre epub viewer even with \tag{}. An advantage is small file size.

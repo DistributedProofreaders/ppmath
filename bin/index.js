@@ -122,6 +122,10 @@ global.MathJax = {
                 String.raw`{\style{transform: scaleX(-1); transform-origin: center; transform-box: content-box}{#1}}`,
                 1,
             ],
+            rotate: [
+                String.raw`{\style{transform: rotate(180deg); transform-origin: center; transform-box: content-box}{#1}}`,
+                1,
+            ],
         },
     },
     // additional configuration here
