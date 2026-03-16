@@ -111,12 +111,11 @@ function reportError(msg) {
 
 global.MathJax = {
     loader: {
-        paths: { mathjax: "@mathjax/src/bundle", img: "mathjax-img" },
-        load: ["input/tex", "output/svg", "adaptors/liteDOM", "[img]/browser/img"],
+        paths: { mathjax: "@mathjax/src/bundle" },
+        load: ["input/tex", "output/svg", "adaptors/liteDOM"],
         require: (file) => import(file),
     },
     tex: {
-        packages: { "[+]": ["img"] },
         macros: {
             reflect: [
                 String.raw`{\style{transform: scaleX(-1); transform-origin: center; transform-box: content-box}{#1}}`,
@@ -126,10 +125,7 @@ global.MathJax = {
                 String.raw`{\style{transform: rotate(180deg); transform-origin: center; transform-box: content-box}{#1}}`,
                 1,
             ],
-            scale: [
-                String.raw`{\style{transform: scaleX(3)}{#1}}`,
-                1,
-            ],
+            scale: [String.raw`{\style{transform: scaleX(#1)}{#2}}`, 2],
         },
     },
     // additional configuration here

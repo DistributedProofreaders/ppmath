@@ -63,7 +63,7 @@ Within a math expression the following macros are implemented:
 
 `\rotate{...}` gives a character rotated by 180 degrees. E.g. `\(x = \rotate{\mathrm{R}}\)`.
 
-`\img` enables a user-defined image to be inserted. E.g. `\[ x = \img[valign=-.5ex, width=1em, height=1em][alttext]{images/xyz.svg}\]`. Replace -.5ex, 1em, 1em, alttext, images/xyz.svg with whatever values you wish to use. svg, jpg and png image files are supported. This uses https://github.com/pkra/mathjax-img/blob/main/README.md.
+`scale{...}{...}` stretches a character by a scale factor. E.g. `\(x = \scale{3}{▶}\)` makes the triangle 3 times longer.
 
 ## Comparison of the modes
 
