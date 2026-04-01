@@ -35,6 +35,7 @@ if (!(values.infile && values.outfile)) {
     console.log(
         "use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em) (-r to revert)",
     );
+    process.exit();
 }
 
 import { createHmac } from "node:crypto";
