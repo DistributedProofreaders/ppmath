@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/* global MathJax */
+
 import { parseArgs } from "node:util";
 
 const options = {

@@ -13,7 +13,11 @@
   "author": "rp31",
   "license": "GPL",
   "dependencies": {
-    "@mathjax/src": "^4.1.1",
-    "mathjax-img": "^5.0.0"
+    "@mathjax/src": "^4.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0"
   }
 }
