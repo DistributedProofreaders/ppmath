@@ -1,85 +1,94 @@
 #!/usr/bin/env node
 
-const { parseArgs } = require('node:util');
+/* global MathJax */
+
+import { parseArgs } from "node:util";
+
 const options = {
     mode: {
-        type: 'string',
-        short: 'm',
-        default: 'i',
+        type: "string",
+        short: "m",
+        default: "i",
     },
     infile: {
-        type: 'string',
-        short: 'i',
+        type: "string",
+        short: "i",
     },
     outfile: {
-        type: 'string',
-        short: 'o',
+        type: "string",
+        short: "o",
     },
     margin: {
-        type: 'string',
-        short: 'g',
-        default: '0.3em',
+        type: "string",
+        short: "g",
+        default: "0.3em",
     },
     reverse: {
-        type: 'boolean',
-        short: 'r',
+        type: "boolean",
+        short: "r",
         default: false,
     },
 };
 const result = parseArgs({ options });
-let values = result.values;
+const values = result.values;
 if (!(values.infile && values.outfile)) {
-    console.log("use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em) (-r to revert)");
-    return;
+    console.log(
+        "use m2svg -i infile -o outfile -m mode -g margin (where mode is i: svg image, s: inline svg, m: mathml, margin is like 0.3em) (-r to revert)",
+    );
+    process.exit();
 }
 
-const fs = require("fs"); // file system
-const packageJson = require('../package.json');
-console.log("m2svg version ", packageJson.version);
+import { createHmac } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-let inFile = values.infile;
-let outFile = values.outfile;
+import pj from "../package.json" with { type: "json" };
 
-let textIn = fs.readFileSync(inFile, "utf8");
+console.log("m2svg version ", pj.version);
+
+const inFile = values.infile;
+const outFile = values.outfile;
+let lineNum;
+
+let textIn = readFileSync(inFile, "utf8");
 
 if (values.reverse) {
     console.log("reversing");
-    textIn = textIn.replace(/<span.*?data-tex="(\\\[[^]*?\\])"[^]*?<\/span>/g, "$1");
-    textIn = textIn.replace(/<span.*?data-tex="(\\\([^]*?\\\))"[^]*?<\/span>/g, "$1");
-    textIn = textIn.replace(/<img.*?data-tex="(\\\([^]*?\\\))">/g, "$1");
-    fs.writeFileSync(outFile, textIn);
-    return;
+    textIn = textIn.replace(/<span.*?data-tex="(\\\[.*?\\])".*?<\/span>/gs, "$1");
+    textIn = textIn.replace(/<span.*?data-tex="(\\\(.*?\\\))".*?<\/span>/gs, "$1");
+    textIn = textIn.replace(/<img.*?data-tex="(\\\(.*?\\\))">/gs, "$1");
+    writeFileSync(outFile, textIn);
+    process.exit();
 }
-
-const mj = require("mathjax");
-
-const crypto = require("crypto");
-
 
 // make styles
 // for inline svg MathJax.startup.adaptor.textContent(MathJax.svgStylesheet()) works but
 // contains custom elements and attributes that ebookmaker doesn't like
 let mStyle = "";
-let margString = `margin: ${values.margin} 0;`;
+const margString = `margin: ${values.margin} 0;`;
 
 const imageDir = "images";
 
 switch (values.mode) {
-case 'i':
-    mStyle = `.align-center {display: block; text-align: center; ${margString}}`;
-    if (!fs.existsSync(imageDir)) {
-        fs.mkdirSync(imageDir);
-    }
-    break;
-case 's':
-    mStyle = `.dispblock {display: block; text-align: center; ${margString}}
-.dispflex {display: flex; ${margString}}`;
-    break;
-case 'm':
-    mStyle = `.dispmarge {display: block; ${margString}}`;
-    break;
-default:
-    break;
+    case "i":
+        mStyle = `.align-center {display: block; text-align: center; ${margString}}`;
+        if (!existsSync(imageDir)) {
+            mkdirSync(imageDir);
+        }
+        break;
+    case "s":
+        mStyle = `.dispblock {display: block; text-align: center; ${margString}}
+    .dispflex {display: flex; ${margString}}`;
+        break;
+    case "m":
+        mStyle = `.dispmarge {display: block; ${margString}}`;
+        break;
+    case "d":
+        // dummy run to to parse \[ \] \( \)
+        break;
+    default:
+        console.log("unknown mode ", values.mode);
+        process.exit();
+        break;
 }
 
 textIn = textIn.replace("__style_holder", mStyle);
@@ -88,69 +97,117 @@ textIn = textIn.replace("__style_holder", mStyle);
 textIn = textIn.replace(/<!--.*?-->/gs, "");
 
 var textOut = "";
+let fileSerial = 0;
+const fileNumbers = new Map();
+const EM = 16; // size of an em in pixels
+const EX = 8; // size of an ex in pixels
+const WIDTH = 80 * EM; // width of container for linebreaking
+const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
 
 function toBuffer(txt) {
     textOut += txt;
 }
 
 function reportError(msg) {
-    console.log('\n' + msg);
+    console.log(`\n${msg}`);
 }
 
-let fileSerial = 0;
-const fileNumbers = new Map();
+global.MathJax = {
+    loader: {
+        paths: { mathjax: "@mathjax/src/bundle" },
+        load: ["input/tex", "output/svg", "adaptors/liteDOM"],
+        require: (file) => import(file),
+    },
+    tex: {
+        macros: {
+            reflect: [
+                String.raw`{\style{transform: scaleX(-1); transform-origin: center; transform-box: content-box}{#1}}`,
+                1,
+            ],
+            rotate: [
+                String.raw`{\style{transform: rotate(180deg); transform-origin: center; transform-box: content-box}{#1}}`,
+                1,
+            ],
+            scale: [String.raw`{\style{transform: scaleX(#1)}{#2}}`, 2],
+        },
+    },
+    // additional configuration here
+};
+
+await import("@mathjax/src/bundle/startup.js");
+await MathJax.startup.promise;
+await convert();
+MathJax.done();
+
+async function getSvgImage(math, options = {}) {
+    const adaptor = MathJax.startup.adaptor;
+    const result = await MathJax.tex2svgPromise(math, options);
+    const svg = adaptor.tags(result, "svg")[0];
+    adaptor.removeAttribute(svg, "role");
+    adaptor.removeAttribute(svg, "focusable");
+    adaptor.removeAttribute(svg, "aria-hidden");
+    const g = adaptor.tags(svg, "g")[0];
+    adaptor.setAttribute(g, "stroke", "black");
+    adaptor.setAttribute(g, "fill", "black");
+    return `${xmlDeclaration}\n${adaptor.serializeXML(svg)}`;
+}
 
 function gFix(txt) {
-    // remove attributes from g tags that cause validation problems
-    txt = txt.replace(/data-mml-node=".*?"/g, "");
-    txt = txt.replace(/data-c=".*?"/g, "");
-    txt = txt.replace(/data-mjx-texclass=".*?"/g, "");
-    // remove role and focusable which also fail to validate in ebookmaker
-    txt = txt.replace(/role=".*?"/, "");
-    txt = txt.replace(/focusable=".*?"/, "");
-    // add version
-    txt = txt.replace(/^<svg/, `<svg version="1.1"`);
+    // remove attributes from g tags that cause validation problems in images
+    txt = txt.replace(/\s*data-mml-node=".*?"/g, "");
+    txt = txt.replace(/\s*data-c=".*?"/g, "");
+    txt = txt.replace(/\s*data-mjx-texclass=".*?"/g, "");
+    txt = txt.replace(/\s*data-latex=".*?"/gs, "");
+    txt = txt.replace(/\s*data-variant=".*?"/g, "");
     return txt;
 }
 
-function sFix(txt) {
-    // remove attributes from inline svg tags that cause validation problems
-    // remove focusable
-    txt = txt.replace(/focusable=".*?"/g, "");
-    // remove colon from id
-    txt = txt.replace(/id="mjx-eqn:/g, `id="mjx-eqn`);
-    return txt;
-}
+async function writeMath(mathTxt, inLine) {
+    function errorCheck(txt) {
+        const reErr = /data-mjx-error="(.*?)"/;
+        const result = reErr.exec(txt);
+        if (result) {
+            reportError(`MathJax error near line ${lineNum}: ${result[1]} : ${mathTxt}`);
+        }
+    }
 
-function writeMath(MathJax, mathTxt, inLine) {
+    // mathjax bug ?
+    if (inLine) {
+        mathTxt = `{${mathTxt}}`;
+    }
+
+    const options = {
+        display: !inLine,
+        em: EM,
+        ex: EX,
+        containerWidth: WIDTH,
+    };
+
     const taggedMath = inLine ? `\\(${mathTxt}\\)` : `\\[${mathTxt}\\]`;
     const dataTex = `data-tex="${taggedMath}"`;
-    if (values.mode == 'm') {
+    if (values.mode === "d") {
+        // dummy run to catch errors
+    } else if (values.mode === "m") {
         // mathjax errors will get marked in mml so no need to catch
-        const mml = MathJax.tex2mml(mathTxt, {display: !inLine});
-        if(inLine) {
+        const mml = await MathJax.tex2mmlPromise(mathTxt, options);
+        errorCheck(mml);
+        if (inLine) {
             toBuffer(`<span ${dataTex}>${mml}</span>`);
-        } else { // display
+        } else {
+            // display
             toBuffer(`<span class="dispmarge" ${dataTex}>${mml}</span>`);
         }
-    } else if (values.mode == 'i') {
-        const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
-        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
-
-        // if svgCode contains error text return it.
-        const reErr = /data-mjx-error="(.*?)"/;
-        let result = reErr.exec(svgCode);
-        if(result) {
-            return result[1];
-        }
+    } else if (values.mode === "i") {
+        let svgCode = await getSvgImage(mathTxt, options);
+        errorCheck(svgCode);
 
         // make serial file numbers and put them in a map with keys so we can
         // re-use them for the same math.
         // make a key from the original equation including end tags in case same
         // math is both display and inline.
-        const hash = crypto.createHmac("md5", mathTxt).digest("hex");
+        const hash = createHmac("md5", mathTxt).digest("hex");
         let fileNumber = fileNumbers.get(hash);
-        if(fileNumber === undefined) {
+        if (fileNumber === undefined) {
             fileSerial += 1;
             fileNumber = fileSerial;
             // add it to the map
@@ -159,13 +216,13 @@ function writeMath(MathJax, mathTxt, inLine) {
         const fileName = `${imageDir}/${fileNumber}.svg`;
 
         // write html to display the image
-        let source = `src="${fileName}"`;
+        const source = `src="${fileName}"`;
 
         // build style for html from svg
         // need vertical-align for html
         let re = /style="vertical-align: (.+?);"/;
-        result = re.exec(svgCode);
-        let vAlign = result ? result[1] : "0px";
+        let result = re.exec(svgCode);
+        const vAlign = result ? result[1] : "0px";
 
         // for epub to work in ADE etc. we need width and height from svg also in
         // style and to replace svg width and height with values from viewBox
@@ -177,7 +234,7 @@ function writeMath(MathJax, mathTxt, inLine) {
         result = re.exec(svgCode);
         let height = result ? result[1] : "0px";
 
-        let style = `style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
+        const style = `style="vertical-align: ${vAlign}; width: ${width}; height: ${height};"`;
 
         re = /viewBox=".+? .+? (.+?) (.+?)"/;
         result = re.exec(svgCode);
@@ -189,26 +246,32 @@ function writeMath(MathJax, mathTxt, inLine) {
         svgCode = gFix(svgCode);
 
         // store svg in a file
-        fs.writeFileSync(fileName, svgCode);
+        writeFileSync(fileName, svgCode);
 
-        let alt = `alt=""`;
+        const alt = `alt=""`;
         const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
-        if(inLine) {
+        if (inLine) {
             toBuffer(imgTag);
-        } else { // display
+        } else {
+            // display
             toBuffer(`<span class="align-center">${imgTag}</span>`);
         }
-    } else if (values.mode == 's') {
-        const svg = MathJax.tex2svg(mathTxt, {display: !inLine});
-        let svgCode = MathJax.startup.adaptor.innerHTML(svg);
-        let svgContainer = MathJax.startup.adaptor.outerHTML(svg);
-        // errors will be marked in svg so no need to catch
-        svgCode = sFix(svgCode);
-        if(inLine) {
+    } else if (values.mode === "s") {
+        const adaptor = MathJax.startup.adaptor;
+        const result = await MathJax.tex2svgPromise(mathTxt, options);
+        const svg = adaptor.tags(result, "svg")[0];
+        // ebookmaker doesn't like 'focusable'
+        adaptor.removeAttribute(svg, "focusable");
+        const width = adaptor.getAttribute(svg, "width");
+        let svgCode = adaptor.serializeXML(svg);
+        errorCheck(svgCode);
+        // works without this but it reduces file size
+        svgCode = gFix(svgCode);
+        if (inLine) {
             toBuffer(`<span ${dataTex}>${svgCode}</span>`);
         } else {
-            let spanClass = svgContainer.includes(`width="full"`) ? "dispflex" : "dispblock";
-            toBuffer(`<span class='${spanClass}' ${dataTex}>${svgCode}</span>`);
+            const spanClass = width === "100%" ? "dispflex" : "dispblock";
+            toBuffer(`<span class="${spanClass}" ${dataTex}>${svgCode}</span>`);
         }
     }
     // indicate progress
@@ -216,16 +279,16 @@ function writeMath(MathJax, mathTxt, inLine) {
     return false;
 }
 
-function convert(MathJax) {
+async function convert() {
     let startIndex = 0;
     // look for opening or closing tags or newlines
-    let mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
+    const mathRegex = /\\\[|\\\]|\\\(|\\\)|(\r\n|\n|\r)/g;
     let openTag = false;
     let tagIndex = 0;
     let result;
     let tag;
     // track line numbers for reporting errors
-    let lineNum = 1;
+    lineNum = 1;
     let openLine = 1;
 
     function repMismatch() {
@@ -238,26 +301,31 @@ function convert(MathJax) {
         startIndex = tagIndex + 2;
     }
 
-    function writeOut() {
-        let inLine = (openTag === '(');
-        let mathText = textIn.slice(startIndex, tagIndex);
-        let errorText = writeMath(MathJax, mathText, inLine);
+    async function writeOut() {
+        const inLine = openTag === "(";
+        const mathText = textIn.slice(startIndex, tagIndex);
+        const errorText = await writeMath(mathText, inLine);
         startIndex = tagIndex + 2;
-        if(errorText) {
+        if (errorText) {
             reportError(`MathJax error near line ${lineNum}: ${errorText} : ${mathText}`);
         }
         openTag = false;
     }
 
-    while((result = mathRegex.exec(textIn)) !== null) {
-        if(result[1]) { // newline
+    for (;;) {
+        result = mathRegex.exec(textIn);
+        if (result === null) {
+            break;
+        }
+        if (result[1]) {
+            // newline
             lineNum += 1;
             continue;
         }
         tag = result[0].charAt(1);
         tagIndex = result.index;
-        if(!openTag) {
-            if ((tag === '(') || (tag === '[')) {
+        if (!openTag) {
+            if (tag === "(" || tag === "[") {
                 // copy preceding text
                 toBuffer(textIn.slice(startIndex, tagIndex));
                 resynch();
@@ -267,51 +335,45 @@ function convert(MathJax) {
             }
         } else {
             // already in math
-            if(openTag === '[') {
-                switch(tag) {
-                case ']':
-                    writeOut();
-                    break;
-                case '[':
-                    repMismatch();
-                    resynch();
-                    break;
-                default:
-                    // ignore \( and \), if mismatched will get mathJax error
-                    break;
+            if (openTag === "[") {
+                switch (tag) {
+                    case "]":
+                        await writeOut();
+                        break;
+                    case "[":
+                        repMismatch();
+                        resynch();
+                        break;
+                    default:
+                        // ignore \( and \), if mismatched will get mathJax error
+                        break;
                 }
             } else {
                 // openTag is (
-                switch(tag) {
-                case '[':
-                case '(':
-                    repMismatch();
-                    resynch();
-                    break;
-                case ']':
-                    repMismatch();
-                    // into text mode
-                    openTag = false;
-                    break;
-                default:
-                    // )
-                    writeOut();
-                    break;
+                switch (tag) {
+                    case "[":
+                    case "(":
+                        repMismatch();
+                        resynch();
+                        break;
+                    case "]":
+                        repMismatch();
+                        // into text mode
+                        openTag = false;
+                        break;
+                    default:
+                        // )
+                        await writeOut();
+                        break;
                 }
             }
         }
     }
-    if(openTag) {
+    if (openTag) {
         reportError(`no end tag for \\${openTag} at line ${openLine}`);
     }
     // copy remaining text
     toBuffer(textIn.slice(startIndex));
-    fs.writeFileSync(outFile, textOut);
+    writeFileSync(outFile, textOut);
     console.log("Finished");
 }
-
-mj.init({
-    loader: {load: ['input/tex', 'output/svg', '[tex]/unicode']},
-    tex: {packages: {'[+]': ['unicode']}}
-}).then(convert)
-    .catch((err) => reportError(err.message));

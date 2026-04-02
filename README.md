@@ -34,7 +34,7 @@ In the command window navigate to the working directory and type:
 
 `outfile` will be the converted file. Must be specified.
 
-`mode` is one of `i` for embedded images, `s` for inline svg, or `m` for MathML. If not specified the default is `i`.
+`mode` is one of `i` for embedded images, `s` for inline svg, `m` for MathML or `d` for a dummy run. If not specified the default is `i`.
 
 `margin` specifies the space above and below display expressions in any css units. If not specified the default is `0.3em`
 
@@ -56,7 +56,20 @@ There is a `reverse` option which will convert the processed file back to its or
 ### Updating
 On subsequent occasions, to ensure you have the latest version of m2svg type `npm update -g m2svg`
 
+### Additional Features
+Within a math expression the following macros are implemented:
+
+`\reflect{...}` gives a reversed character. E.g. `\(x = \reflect{\mathrm{D}}\)`.
+
+`\rotate{...}` gives a character rotated by 180 degrees. E.g. `\(x = \rotate{\mathrm{R}}\)`.
+
+`scale{...}{...}` stretches a character by a scale factor. E.g. `\(x = \scale{3}{▶}\)` makes the triangle 3 times longer.
+
 ## Comparison of the modes
+
+### Dummy run
+This does not produce any output but just checks that the tags `\[`, `\]`, `\(` and `\)` are correctly matched and reports any errors.
+
 ### Image mode
 This works with most browsers and ereaders.
 The names of the images will be a serial number. Results in a large file size for the images. Any duplicated expressions will link to the same image which helps to keep the size down .
@@ -67,4 +80,4 @@ The \multline markup will generate a multi-line image. But since we do not know 
 This works with most browsers and ereaders. \tag{} markup will work even on old ereaders to make a label placed near the right margin. The file size will be large, even more than the image mode because duplicated expressions will result in duplicated inline svg.
 
 ### MathML mode
-Support for this is limited. Simple expressions will work in browsers but not old ereaders. \tag{} markup doesn't currently work in Firefox or Chromium. MathML works well in the Calibre epub viewer even with \tag{}. An advantage is small file size.
+Support for this is limited. Firefox is quite good, other browsers less so. \tag{} markup doesn't currently work in Firefox or Chromium. MathML works well in the Calibre epub viewer even with \tag{}. An advantage is small file size.
