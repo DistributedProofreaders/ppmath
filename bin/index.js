@@ -153,11 +153,11 @@ async function getSvgImage(math, options = {}) {
 }
 
 function gFix(txt) {
-    // remove attributes from g tags that cause validation problems
+    // remove attributes from g tags that cause validation problems in images
     txt = txt.replace(/\s*data-mml-node=".*?"/g, "");
     txt = txt.replace(/\s*data-c=".*?"/g, "");
     txt = txt.replace(/\s*data-mjx-texclass=".*?"/g, "");
-    txt = txt.replace(/\s*data-latex=".*?"/g, "");
+    txt = txt.replace(/\s*data-latex=".*?"/gs, "");
     txt = txt.replace(/\s*data-variant=".*?"/g, "");
     return txt;
 }
@@ -263,8 +263,10 @@ async function writeMath(mathTxt, inLine) {
         // ebookmaker doesn't like 'focusable'
         adaptor.removeAttribute(svg, "focusable");
         const width = adaptor.getAttribute(svg, "width");
-        const svgCode = adaptor.serializeXML(svg);
+        let svgCode = adaptor.serializeXML(svg);
         errorCheck(svgCode);
+        // works without this but it reduces file size
+        svgCode = gFix(svgCode);
         if (inLine) {
             toBuffer(`<span ${dataTex}>${svgCode}</span>`);
         } else {
