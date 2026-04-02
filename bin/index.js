@@ -159,6 +159,8 @@ function gFix(txt) {
     txt = txt.replace(/\s*data-mjx-texclass=".*?"/g, "");
     txt = txt.replace(/\s*data-latex=".*?"/gs, "");
     txt = txt.replace(/\s*data-variant=".*?"/g, "");
+    txt = txt.replace(/\s*data-frame-styles=".*?"/g, "");
+
     return txt;
 }
 
