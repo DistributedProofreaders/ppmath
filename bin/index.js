@@ -28,6 +28,11 @@ const options = {
         short: "r",
         default: false,
     },
+    lang: {
+        type: "string",
+        short: "l",
+        default: "en",
+    },
 };
 const result = parseArgs({ options });
 const values = result.values;
@@ -136,6 +141,13 @@ global.MathJax = {
 
 await import("@mathjax/src/bundle/startup.js");
 await MathJax.startup.promise;
+let SRE;
+const srOptions = {
+    locale: values.lang,
+};
+const m = await import("speech-rule-engine");
+SRE = m.default;
+await SRE.setupEngine(srOptions);
 await convert();
 MathJax.done();
 
@@ -170,7 +182,9 @@ async function writeMath(mathTxt, inLine) {
         const result = reErr.exec(txt);
         if (result) {
             reportError(`MathJax error near line ${lineNum}: ${result[1]} : ${mathTxt}`);
+            return 1;
         }
+        return 0;
     }
 
     // mathjax bug ?
@@ -185,23 +199,36 @@ async function writeMath(mathTxt, inLine) {
         containerWidth: WIDTH,
     };
 
+    async function getSpeech(mathTxt, options) {
+        const mml = await MathJax.tex2mmlPromise(mathTxt, options);
+        let speech = "";
+        const status = errorCheck(mml);
+        if (0 === status) {
+            speech = SRE.toSpeech(mml);
+        }
+        return [mml, speech, status];
+    }
+
     const taggedMath = inLine ? `\\(${mathTxt}\\)` : `\\[${mathTxt}\\]`;
     const dataTex = `data-tex="${taggedMath}"`;
     if (values.mode === "d") {
         // dummy run to catch errors
     } else if (values.mode === "m") {
-        // mathjax errors will get marked in mml so no need to catch
-        const mml = await MathJax.tex2mmlPromise(mathTxt, options);
-        errorCheck(mml);
+        const [mml, speech] = await getSpeech(mathTxt, options);
+        const aria = `aria-label="${speech}"`;
         if (inLine) {
-            toBuffer(`<span ${dataTex}>${mml}</span>`);
+            toBuffer(`<span ${dataTex} ${aria}>${mml}</span>`);
         } else {
             // display
-            toBuffer(`<span class="dispmarge" ${dataTex}>${mml}</span>`);
+            toBuffer(`<span class="dispmarge" ${dataTex} ${aria}>${mml}</span>`);
         }
     } else if (values.mode === "i") {
+        const [, speech, status] = await getSpeech(mathTxt, options);
+        if (0 !== status) {
+            return;
+        }
+
         let svgCode = await getSvgImage(mathTxt, options);
-        errorCheck(svgCode);
 
         // make serial file numbers and put them in a map with keys so we can
         // re-use them for the same math.
@@ -250,7 +277,7 @@ async function writeMath(mathTxt, inLine) {
         // store svg in a file
         writeFileSync(fileName, svgCode);
 
-        const alt = `alt=""`;
+        const alt = `alt="${speech}"`;
         const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
         if (inLine) {
             toBuffer(imgTag);
@@ -259,14 +286,20 @@ async function writeMath(mathTxt, inLine) {
             toBuffer(`<span class="align-center">${imgTag}</span>`);
         }
     } else if (values.mode === "s") {
+        const [, speech, status] = await getSpeech(mathTxt, options);
+        if (0 !== status) {
+            return;
+        }
+
         const adaptor = MathJax.startup.adaptor;
         const result = await MathJax.tex2svgPromise(mathTxt, options);
         const svg = adaptor.tags(result, "svg")[0];
         // ebookmaker doesn't like 'focusable'
         adaptor.removeAttribute(svg, "focusable");
         const width = adaptor.getAttribute(svg, "width");
+        adaptor.setAttribute(svg, "aria-label", speech);
         let svgCode = adaptor.serializeXML(svg);
-        errorCheck(svgCode);
+
         // works without this but it reduces file size
         svgCode = gFix(svgCode);
         if (inLine) {
@@ -278,7 +311,6 @@ async function writeMath(mathTxt, inLine) {
     }
     // indicate progress
     process.stdout.write(".");
-    return false;
 }
 
 async function convert() {
@@ -306,11 +338,8 @@ async function convert() {
     async function writeOut() {
         const inLine = openTag === "(";
         const mathText = textIn.slice(startIndex, tagIndex);
-        const errorText = await writeMath(mathText, inLine);
+        await writeMath(mathText, inLine);
         startIndex = tagIndex + 2;
-        if (errorText) {
-            reportError(`MathJax error near line ${lineNum}: ${errorText} : ${mathText}`);
-        }
         openTag = false;
     }
 
