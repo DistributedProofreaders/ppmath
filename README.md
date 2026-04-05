@@ -1,5 +1,5 @@
 # m2svg
-This command-line tool processes a text file (usually html) which includes LaTex maths formulae. It converts the formulae into a representation of the math in one of three different ways: as svg images, as inline svg, or as MathML.
+This command-line tool processes a text file (usually html) which includes LaTex maths formulae. It converts the formulae into a representation of the math in one of three different ways: as svg images, as inline svg, or as MathML. It also makes a text represntation of the maths which can be used by screen-readers.
 
 ## Installation
 First, nodejs and npm must be installed on your computer. The procedure varies with the operating system:
@@ -28,7 +28,9 @@ The file should also contain a line `__style_holder` inside the `<style>` sectio
 
 In the command window navigate to the working directory and type:
 
-`m2svg -i infile -o outfile -m mode -g margin`
+`m2svg -i infile -o outfile -m mode -g margin -l langcode`
+
+-m, -g, -l are optional.
 
 `infile` is the file to convert. Must be specified.
 
@@ -38,12 +40,14 @@ In the command window navigate to the working directory and type:
 
 `margin` specifies the space above and below display expressions in any css units. If not specified the default is `0.3em`
 
+`langcode` specifies the language used for for the text representation of the maths as a two-letter code, see ISO 639-1. If not specified the default is `en`.
+
 In the case of mode `i` the image files will be placed in a subdirectory of the working directory called "images". This directory will be created if it does not already exist.
 
 The program will normally run until the conversion is complete. It prints dots to show its progress. Pressing ctrl-c will stop the run.
 In the converted file the maths expressions, delimited by the tags `\[` and `\]` for 'display' expressions or `\(` and `\)` for 'inline' expressions, are replaced in the output file by the appropriate text or links. These will contain a 'data-tex' attribute which shows the original maths expression.
 
-If the program detects any tags that do not match up correctly it will print a message at the terminal showing the number of the line where the error occurred and continue working. If there are any errors in the math expressions then, in the `i` option, a message will be printed to the console describing the error and the number of the line near where it occurs. For the other options the error will be marked in the output file.
+If the program detects any tags that do not match up correctly it will print a message at the terminal showing the number of the line where the error occurred and continue working. If there are any errors in the math expressions then a message will be printed to the console describing the error and the number of the line near where it occurs.
 
 ### Reversion
 
