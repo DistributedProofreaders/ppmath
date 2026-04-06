@@ -1,6 +1,6 @@
 {
   "name": "m2svg",
-  "version": "3.1.4",
+  "version": "3.2.0",
   "type": "module",
   "description": "make svg images for LaTex expressions",
   "main": "bin/index.js",
@@ -13,7 +13,8 @@
   "author": "rp31",
   "license": "GPL",
   "dependencies": {
-    "@mathjax/src": "^4.1.1"
+    "@mathjax/src": "^4.1.1",
+    "speech-rule-engine/lib": "^3.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
