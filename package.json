@@ -14,7 +14,7 @@
   "license": "GPL",
   "dependencies": {
     "@mathjax/src": "^4.1.1",
-    "speech-rule-engine/lib": "^3.0.2"
+    "speech-rule-engine": "^3.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
