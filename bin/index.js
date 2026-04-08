@@ -96,6 +96,8 @@ switch (values.mode) {
         break;
 }
 
+mStyle += "\n.nowrap { white-space: nowrap; }\n";
+
 textIn = textIn.replace("__style_holder", mStyle);
 
 // remove html commented sections
@@ -213,19 +215,22 @@ async function writeMath(mathTxt, inLine) {
     const dataTex = `data-tex="${taggedMath}"`;
     if (values.mode === "d") {
         // dummy run to catch errors
-    } else if (values.mode === "m") {
+        return "";
+    }
+    if (values.mode === "m") {
         const [mml, speech] = await getSpeech(mathTxt, options);
         const aria = `aria-label="${speech}"`;
         if (inLine) {
-            toBuffer(`<span ${dataTex} ${aria}>${mml}</span>`);
+            return `<span ${dataTex} ${aria}>${mml}</span>`;
         } else {
             // display
-            toBuffer(`<span class="dispmarge" ${dataTex} ${aria}>${mml}</span>`);
+            return `<span class="dispmarge" ${dataTex} ${aria}>${mml}</span>`;
         }
-    } else if (values.mode === "i") {
+    }
+    if (values.mode === "i") {
         const [, speech, status] = await getSpeech(mathTxt, options);
         if (0 !== status) {
-            return;
+            return "";
         }
 
         let svgCode = await getSvgImage(mathTxt, options);
@@ -280,15 +285,16 @@ async function writeMath(mathTxt, inLine) {
         const alt = `alt="${speech}"`;
         const imgTag = `<img ${style} ${source} ${alt} ${dataTex}>`;
         if (inLine) {
-            toBuffer(imgTag);
+            return imgTag;
         } else {
             // display
-            toBuffer(`<span class="align-center">${imgTag}</span>`);
+            return `<span class="align-center">${imgTag}</span>`;
         }
-    } else if (values.mode === "s") {
+    }
+    if (values.mode === "s") {
         const [, speech, status] = await getSpeech(mathTxt, options);
         if (0 !== status) {
-            return;
+            return "";
         }
 
         const adaptor = MathJax.startup.adaptor;
@@ -303,14 +309,13 @@ async function writeMath(mathTxt, inLine) {
         // works without this but it reduces file size
         svgCode = gFix(svgCode);
         if (inLine) {
-            toBuffer(`<span ${dataTex}>${svgCode}</span>`);
+            return `<span ${dataTex}>${svgCode}</span>`;
         } else {
             const spanClass = width === "100%" ? "dispflex" : "dispblock";
-            toBuffer(`<span class="${spanClass}" ${dataTex}>${svgCode}</span>`);
+            return `<span class="${spanClass}" ${dataTex}>${svgCode}</span>`;
         }
     }
-    // indicate progress
-    process.stdout.write(".");
+    return "";
 }
 
 async function convert() {
@@ -338,9 +343,25 @@ async function convert() {
     async function writeOut() {
         const inLine = openTag === "(";
         const mathText = textIn.slice(startIndex, tagIndex);
-        await writeMath(mathText, inLine);
+        const mathExp = await writeMath(mathText, inLine);
+        // indicate progress
+        process.stdout.write(".");
+
         startIndex = tagIndex + 2;
         openTag = false;
+        // test if non-space char (punc) follows inline math
+        // can't put punc after display math if there is a \tag{}
+        if (inLine) {
+            const nextChar = textIn.charAt(startIndex);
+            // nextChar could be empty at end
+            if (/\S/.test(nextChar)) {
+                // wrap it with math
+                startIndex += 1;
+                toBuffer(`<span class="nowrap">${mathExp}${nextChar}</span>`);
+                return;
+            }
+        }
+        toBuffer(mathExp);
     }
 
     for (;;) {
