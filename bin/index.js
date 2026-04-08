@@ -230,7 +230,7 @@ async function writeMath(mathTxt, inLine) {
     if (values.mode === "i") {
         const [, speech, status] = await getSpeech(mathTxt, options);
         if (0 !== status) {
-            return;
+            return "";
         }
 
         let svgCode = await getSvgImage(mathTxt, options);
@@ -294,7 +294,7 @@ async function writeMath(mathTxt, inLine) {
     if (values.mode === "s") {
         const [, speech, status] = await getSpeech(mathTxt, options);
         if (0 !== status) {
-            return;
+            return "";
         }
 
         const adaptor = MathJax.startup.adaptor;
