@@ -353,7 +353,7 @@ async function convert() {
         if (inLine) {
             const nextChar = textIn.charAt(startIndex);
             // nextChar could be empty at end
-            if (/\S/.test(nextChar)) {
+            if (/[,.;:'?!]/.test(nextChar)) {
                 // wrap it with math
                 startIndex += 1;
                 toBuffer(`<span class="nowrap">${mathExp}${nextChar}</span>`);
