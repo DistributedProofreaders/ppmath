@@ -3,6 +3,9 @@
 /* global MathJax */
 
 import { parseArgs } from "node:util";
+import pj from "../package.json" with { type: "json" };
+
+console.log("m2svg version ", pj.version);
 
 const options = {
     mode: {
@@ -46,10 +49,6 @@ if (!(values.infile && values.outfile)) {
 import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import pj from "../package.json" with { type: "json" };
-
-console.log("m2svg version ", pj.version);
-
 const inFile = values.infile;
 const outFile = values.outfile;
 let lineNum;
@@ -82,7 +81,7 @@ switch (values.mode) {
         break;
     case "s":
         mStyle = `.dispblock {display: block; text-align: center; ${margString}}
-    .dispflex {display: flex; ${margString}}`;
+ .dispflex {display: flex; ${margString}}`;
         break;
     case "m":
         mStyle = `.dispmarge {display: block; ${margString}}`;
@@ -96,7 +95,7 @@ switch (values.mode) {
         break;
 }
 
-mStyle += "\n.nowrap { white-space: nowrap; }\n";
+mStyle += " .nowrap {white-space: nowrap;}";
 
 textIn = textIn.replace("__style_holder", mStyle);
 
@@ -354,7 +353,7 @@ async function convert() {
         if (inLine) {
             const nextChar = textIn.charAt(startIndex);
             // nextChar could be empty at end
-            if (/\S/.test(nextChar)) {
+            if (/[,.;:'?!]/.test(nextChar)) {
                 // wrap it with math
                 startIndex += 1;
                 toBuffer(`<span class="nowrap">${mathExp}${nextChar}</span>`);
