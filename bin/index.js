@@ -81,7 +81,7 @@ switch (values.mode) {
         break;
     case "s":
         mStyle = `.dispblock {display: block; text-align: center; ${margString}}
-    .dispflex {display: flex; ${margString}}`;
+ .dispflex {display: flex; ${margString}}`;
         break;
     case "m":
         mStyle = `.dispmarge {display: block; ${margString}}`;
@@ -95,7 +95,7 @@ switch (values.mode) {
         break;
 }
 
-mStyle += "\n.nowrap { white-space: nowrap; }\n";
+mStyle += " .nowrap {white-space: nowrap;}";
 
 textIn = textIn.replace("__style_holder", mStyle);
 
