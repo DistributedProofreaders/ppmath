@@ -3,6 +3,9 @@
 /* global MathJax */
 
 import { parseArgs } from "node:util";
+import pj from "../package.json" with { type: "json" };
+
+console.log("m2svg version ", pj.version);
 
 const options = {
     mode: {
@@ -45,10 +48,6 @@ if (!(values.infile && values.outfile)) {
 
 import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-
-import pj from "../package.json" with { type: "json" };
-
-console.log("m2svg version ", pj.version);
 
 const inFile = values.infile;
 const outFile = values.outfile;
